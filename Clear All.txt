@@ -1,0 +1,237 @@
+package javaapplication19;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.Stack;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class Surface extends JPanel implements ActionListener {
+    ArrayList<Shapes> history = new ArrayList<Shapes>();
+    Stack<ArrayList<Shapes>> undo = new Stack<ArrayList<Shapes>>(); 
+    Stack<ArrayList<Shapes>> redo = new Stack<ArrayList<Shapes>>(); 
+    ArrayList<Shapes> shape = new ArrayList<Shapes>();
+    
+
+    
+    int x, action = 0;
+    int y;
+    int w;
+    int h;
+    Color c = (Color.BLACK), fc = (Color.WHITE);
+    JButton lbtn, rbtn, obtn, cbtn, fbtn, SMbtn, Ubtn, Rbtn, Sbtn ,Lbtn ;
+    
+
+    public Surface() {
+
+        setBorder(BorderFactory.createLineBorder(Color.black));
+        this.setLayout(new BorderLayout());
+        this.setBackground(Color.WHITE);
+
+        JPanel btnPanel = new JPanel();
+        btnPanel.setBackground(Color.DARK_GRAY);
+        JPanel btnPanel1 = new JPanel();
+        btnPanel1.setBackground(Color.DARK_GRAY);
+        
+        
+        Box thebox = Box.createHorizontalBox();
+        Box thebox1 = Box.createVerticalBox();
+       
+        
+        lbtn = new JButton("Line");
+        rbtn = new JButton("Rectangle");
+        cbtn = new JButton("Colors");
+        obtn = new JButton("Oval");
+        SMbtn= new JButton("Move");
+         Ubtn= new JButton ("Undo");  
+         Rbtn= new JButton("Redo");
+         Sbtn=new JButton("Save");
+         Lbtn=new JButton("Load");
+        lbtn.addActionListener(this);
+        rbtn.addActionListener(this);
+        cbtn.addActionListener(this);
+        obtn.addActionListener(this);
+        SMbtn.addActionListener(this);
+        Ubtn.addActionListener(this);
+        Rbtn.addActionListener(this);
+        Sbtn.addActionListener(this);
+        Lbtn.addActionListener(this);
+        thebox.add(lbtn);
+        thebox.add(rbtn);
+        thebox.add(obtn);
+        thebox.add(cbtn);
+        thebox1.add(Lbtn);
+        thebox1.add(Sbtn);
+        thebox1.add(Ubtn);
+        thebox1.add(Rbtn);
+        thebox1.add(SMbtn);
+
+        btnPanel.add(thebox);
+        btnPanel1.add(thebox1);
+        
+
+        this.add(btnPanel, BorderLayout.SOUTH);
+        this.add(btnPanel1,BorderLayout.WEST);
+
+        addMouseListener(new MouseAdapter() {
+            public void mousePressed(MouseEvent e) {
+                x = e.getX();
+                y = e.getY();
+            }
+
+            public void mouseReleased(MouseEvent e) {
+
+                w = e.getX();
+                h = e.getY();
+                if (action == 1) {
+                    shape.add(new Lines(x, y, w, h, c));
+                } else if (action == 2) {
+                    shape.add(new Rectangles(x, y, w, h, c));
+                } else if (action == 3) {
+                    shape.add(new Oval(x, y, w, h, c));
+                }
+                else if (action ==4){
+                    
+                    
+                }
+                repaint();
+            }
+
+        });
+
+        addMouseMotionListener(new MouseAdapter() {
+            public void mouseDragged(MouseEvent e) {
+                w = e.getX();
+                h = e.getY();
+                repaint();
+            }
+
+        });
+
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == lbtn) {
+            action = 1;
+        } else if (e.getSource() == rbtn) {
+            action = 2;
+        } else if (e.getSource() == obtn) {
+            action = 3;
+        } else if (e.getSource() == cbtn) {
+            c = JColorChooser.showDialog(null, "pick your color", c);
+        } 
+        else if (e.getSource() == Ubtn) {
+            action = 4;
+            undo();
+        }
+        else if (e.getSource() == Rbtn)
+        {
+            action = 5 ;
+            redo();
+        }
+        else if(e.getSource()==Sbtn)
+        {
+            try {
+                save();
+            } catch (FileNotFoundException ex) {
+                Logger.getLogger(Surface.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        else if(e.getSource()==Lbtn)
+        {
+               load();
+            
+        }
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setColor(Color.LIGHT_GRAY);
+        if (action == 1) {
+            g2d.drawLine(x, y, w, h);
+        } else if (action == 2) {
+            g2d.drawRect(Math.min(x, w), Math.min(y, h), Math.abs(x - w), Math.abs(y - h));
+        } else if (action == 3) {
+            g2d.drawOval(Math.min(x, w), Math.min(y, h), Math.abs(x - w), Math.abs(y - h));
+        }
+
+        for (Shapes s : shape) {
+            if (undo.isEmpty())
+            undo.push(new ArrayList<Shapes>());
+            g2d.setColor(Color.LIGHT_GRAY);
+            if (action == 1) {
+                g2d.drawLine(x, y, w, h);
+            } else if (action == 2) {
+                g2d.drawRect(Math.min(x, w), Math.min(y, h), Math.abs(x - w), Math.abs(y - h));
+            } else if (action == 3) {
+                g2d.drawOval(Math.min(x, w), Math.min(y, h), Math.abs(x - w), Math.abs(y - h));
+            }
+
+            s.paint(g);
+        }
+    }
+    public void undo(){
+    	if (!undo.isEmpty() /*&& undo.peek().size()!=0*/) {
+			ArrayList<Shapes> curr =new ArrayList<Shapes>();
+			curr = undo.pop();
+			if (!undo.isEmpty() )
+				shape = new ArrayList<Shapes>(undo.peek());
+			else shape = curr;
+			redo.push(curr);
+		}
+    	repaint();
+    }
+public void redo(){
+    	if (redo.isEmpty()) {
+    		} else {
+    			ArrayList<Shapes> curr = redo.pop();
+    			shape = new ArrayList<Shapes>(curr);
+    			
+    			undo.push(curr);
+    		}
+    		repaint();
+    	
+    }
+public synchronized void copylist(boolean nShape){
+		ArrayList<Shapes> history = new ArrayList<Shapes>();
+    	for (int i=0; i<shape.size(); i++){
+    		{
+    			Shapes nshape = shape.get(i).getCopy(shape.get(i));
+    			//nshape.fillColor(nshape.getFill());
+    			history.add(nshape);
+    		}
+    	}
+    	synchronized(undo){
+    		undo.push(history);
+    	}
+    	System.out.println(history.size() + " :history" );
+    	//history = new ArrayList<shapes>();
+        }
+public void save() throws FileNotFoundException{
+    	 
+     	XML f = new XML();
+        Save t2= new Save();
+        f.write(shape,t2.load());
+     }
+     public void load(){
+    	 Load t = new Load();
+ 		XML f = new XML();
+ 		try {
+				shape = f.load(t.load());
+			} catch (FileNotFoundException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+ 		repaint();
+     }
+
+}
